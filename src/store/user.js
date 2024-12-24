@@ -1,25 +1,28 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-const userStore = create(persist((set) => ({
-    user:null,
-    token:null,
-    login:(user , token) => {
+const useUserStore = create(
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      logIn: (user, token) => {
         set({
-            user,
-            token
-        })
-    },
-
-    logOut :() =>{
+          user,
+          token,
+        });
+      },
+      logOut: () => {
         set({
-         user:null,
-         token:null
-        })
+          user: null,
+          token: null,
+        });
+      },
+    }),
+    {
+      name: "user-store", // Use a unique name for local storage
     }
-}),{
-    name:"use-store"
-}))
+  )
+);
 
-export default userStore
-export const authToken = userStore.getState().token;
+export default useUserStore;

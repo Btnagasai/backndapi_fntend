@@ -1,107 +1,116 @@
-// src/pages/Home.js
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import useStore from "../store/products"; // Zustand store for managing cart
-import { axiosInstance } from "../client/api"; // Axios instance for fetching data
+import useStore from "../store/products"; // Zustand store for the cart
+import { axiosInstance } from "../client/api";
+import { Link } from "react-router-dom";
 
-function Home() {
-  const [products, setProducts] = useState([]); // State to store products
-  const { cart, incrementCartItems, decrementCartItems, getTotalPrice, removeItems } = useStore(); // Cart actions from Zustand store
-  const navigate = useNavigate(); // For navigation
+export default function Home() {
+  const [products, setProducts] = useState([]);
+  const {
+    cart,
+    incrementCartItems,
+    decrementCartItems,
+    getTotalPrice,
+    removeItems,
+  } = useStore(); // Zustand store for the cart
 
-  // Fetch products from the server
-  const fetchData = async () => {
-    try {
-      const response = await axiosInstance.get("/products");
-      setProducts(response.data);
-    } catch (err) {
-      console.error("Error fetching products:", err);
-    }
-  };
-
+  // Fetch products from backend
   useEffect(() => {
-    fetchData(); // Fetch products when component mounts
-  }, []); // Empty dependency array to run on mount
-
-  const totalPrice = getTotalPrice(); // Get total price of items in the cart
+    const fetchData = async () => {
+      try {
+        const response = await axiosInstance.get("/products");
+        setProducts(response.data);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+      }
+    };
+    fetchData();
+  }, []);
 
   return (
-    <div className="bg-gray-50 min-h-screen py-6 px-4">
-      {/* Cart Section */}
-      <div className="bg-white p-6 rounded-lg shadow-xl mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">Your Cart</h2>
-        {cart.length === 0 ? (
-          <p className="text-lg text-gray-600">Your cart is empty.</p>
-        ) : (
-          cart.map((cartItem) => (
-            <div key={cartItem.cartId} className="flex justify-between items-center border-b py-4">
-              <div className="flex items-center gap-4">
-                <img
-                  src={cartItem.image || "https://via.placeholder.com/150"} // Fallback image if no image is available
-                  alt={cartItem.name}
-                  className="w-16 h-16 object-cover rounded-md"
-                />
-                <div>
-                  <p className="text-gray-800 font-semibold">{cartItem.name}</p>
-                  <p className="text-gray-600">Price: ${cartItem.price}</p>
-                  <p className="text-gray-600">Quantity: {cartItem.quantity}</p>
+    <div className="min-h-screen bg-gray-100 p-4">
+      <div className="container mx-auto">
+        {/* Cart Section */}
+        <div className="mb-8 bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-bold mb-4 text-gray-700">Your Cart</h2>
+          {cart.length === 0 ? (
+            <p className="text-gray-500">Your cart is empty.</p>
+          ) : (
+            <div className="space-y-4">
+              {cart.map((item) => (
+                <div
+                  key={item.cartId}
+                  className="flex items-center justify-between bg-gray-50 p-4 rounded-lg shadow-sm"
+                >
+                  <div className="flex items-center space-x-4">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-16 h-16 rounded-lg object-cover"
+                    />
+                    <div>
+                      <p className="text-gray-700 font-medium">{item.name}</p>
+                      <p className="text-gray-500 text-sm">${item.price}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => decrementCartItems(item.productId)}
+                      className="bg-gray-200 px-2 py-1 rounded-lg hover:bg-gray-300 text-gray-600"
+                    >
+                      -
+                    </button>
+                    <button
+                      onClick={() => incrementCartItems(item.productId)}
+                      className="bg-blue-500 px-2 py-1 rounded-lg text-white hover:bg-blue-600"
+                    >
+                      +
+                    </button>
+                    <button
+                      onClick={() => removeItems(item.cartId)}
+                      className="bg-red-500 px-2 py-1 rounded-lg text-white hover:bg-red-600"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <button
-                onClick={() => removeItems(cartItem.cartId)}
-                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 focus:outline-none transition duration-200"
-              >
-                Remove
-              </button>
+              ))}
             </div>
-          ))
-        )}
+          )}
+          <p className="text-right text-gray-700 font-semibold mt-4">
+            Total Price: <span className="text-blue-500">${getTotalPrice()}</span>
+          </p>
+        </div>
 
-        {/* Cart Summary */}
-        {cart.length > 0 && (
-          <div className="mt-4 text-right">
-            <p className="text-lg font-semibold text-gray-800">
-              Total Items: {cart.length}
-            </p>
-            <p className="text-xl font-semibold text-gray-800">Total Price: ${totalPrice}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Product Listing */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {products.map((product) => (
-          <div key={product.id} className="bg-white p-5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-            <Link to={`/products/${product.id}`} className="block text-center mb-4">
-              <img
-                src={product.image || "https://via.placeholder.com/150"}
-                alt={product.name}
-                className="w-full h-40 object-cover rounded-lg mb-4"
-              />
-              <p className="text-gray-800 font-semibold">{product.name}</p>
-              <p className="text-gray-600">${product.price}</p>
-            </Link>
-            <div className="flex justify-between items-center mt-4">
-              <button
-                onClick={() => decrementCartItems(product.id)}
-                className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none transition-all duration-200"
-              >
-                -
-              </button>
+        {/* Products Section */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center"
+            >
+              <Link to={`/products/${product.id}`}>
+                <h3 className="text-lg font-semibold text-gray-700 hover:text-blue-500 mb-4 text-center">
+                  {product.name}
+                </h3>
+                <img src={product.image} alt={product.image} />
+              </Link>
               <button
                 onClick={() =>
-                  incrementCartItems(product.id, product.name, product.price, product.image, product.description)
+                  incrementCartItems(
+                    product.id,
+                    product.name,
+                    product.price,
+                    product.image
+                  )
                 }
-                className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 focus:outline-none transition-all duration-200"
+                className="mt-auto bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
               >
-                +
+                Add to Cart
               </button>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
 }
-
-export default Home;

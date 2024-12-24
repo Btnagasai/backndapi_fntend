@@ -1,40 +1,30 @@
 import axios from "axios";
-import { authToken } from "../store/user";
+import useUserStore from "../store/user";
 
 export const axiosInstance = axios.create({
-    baseURL:"http://localhost:3000/",
-    timeout:1000,
-    headers:{"X-Custom-Header" : "Footer"},
-  })
+  baseURL: "http://localhost:3000/",
+  timeout: 10000,
+});
 
-  axiosInstance.interceptors.request.use(
-    function (config) {
-      // Do something before request is sent
-      const token = authToken;
-      console.log({ token });
-  
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const { token } = useUserStore.getState();
+    if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
-  
-      return config;
-    },
-    function (error) {
-      // Do something with request error
-      return Promise.reject(error);
+    } else {
+      console.warn("No auth token found! Check user login state.");
     }
-  );
-  
-
-  // / Add a response interceptor
-axiosInstance.interceptors.response.use(
-  function (response) {
-    // Any status code that lie within the range of 2xx cause this function to trigger
-    // Do something with response data
-    return response;
+    return config;
   },
-  function (error) {
-    // Any status codes that falls outside the range of 2xx cause this function to trigger
-    // Do something with response error
+  (error) => Promise.reject(error)
+);
+
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.error("Unauthorized: Check your token or login credentials.");
+    }
     return Promise.reject(error);
   }
 );
-  
