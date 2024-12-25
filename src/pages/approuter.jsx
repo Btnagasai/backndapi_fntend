@@ -7,6 +7,7 @@ import Register from "./register";
 import Product from "../pages/products";
 import { Cart } from "./cart";
 import Shipping from "./shipping";
+import Checkout from "./checkout";
 
 
 // const ProtectedRoute = (props) => {
@@ -35,6 +36,7 @@ export default function AppRouter() {
           <Route path="/login" element={<Login />} />
           <Route path="/profile" element={<Profile />} />
           <Route path= "/shipping" element={<Shipping />} />
+          <Route path="/checkout" element={<Checkout />} />
           <Route path="/cart" element={<Cart />} />
         </Route>
       </Routes>

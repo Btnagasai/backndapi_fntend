@@ -3,8 +3,10 @@ import useStore from "../store/products";
 import vine from "@vinejs/vine";
 import { vineResolver } from "@hookform/resolvers/vine";
 import { useState } from "react";
+import { axiosInstance } from "../client/api";
+import { useNavigate } from "react-router-dom";
 
-// Define validation schema using vine
+// Validation schema
 const schema = vine.compile(
   vine.object({
     city: vine.string(),
@@ -14,34 +16,79 @@ const schema = vine.compile(
 );
 
 const Shipping = () => {
-  const { cart, getTotalPrice, removeItemFromCart } = useStore(); // Zustand store for cart
-  const [orderDetails, setOrderDetails] = useState(null); // Store order details
+  const { cart, getTotalPrice, removeItemFromCart } = useStore(); // Zustand
+  const navigate = useNavigate();
+  const [orderDetails, setOrderDetails] = useState(null); // Local state
 
-  const totalPrice = getTotalPrice(); // Compute the total price
-
-  const { register, handleSubmit, formState, getValues } = useForm({
+  const totalPrice = getTotalPrice(); // Compute total price
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    getValues,
+  } = useForm({
     resolver: vineResolver(schema),
   });
-
-  const onSubmit = () => {
+  const onSubmit = async () => {
     try {
-      // Fetch shipping details from form values
+      // Validate that cart has items
+      if (cart.length === 0) {
+        console.error("Cart is empty. Cannot place order.");
+        return;
+      }
+  
+      // Prepare order items
+      const orderItems = cart.map((item) => ({
+        price: item.price,
+        quantity: item.quantity,
+        productId: item.productId,
+      }));
+  
+      // Validate that all required fields exist in form values
       const { city, state, country } = getValues();
-
-      // Set order details including cart and form data
+      if (!city || !state || !country) {
+        console.error("Incomplete address fields. All fields are required.");
+        return;
+      }
+  
+      // Build deliveryAddress
+      const deliveryAddress = `${city}, ${state}, ${country}`;
+  
+      // Log the data to ensure it's correct before sending
+      console.log("Delivery Address:", deliveryAddress);
+      console.log("Order Items:", JSON.stringify(orderItems, null, 2));
+      console.log("Total Price:", totalPrice);
+  
+      // Send request to the server
+      await axiosInstance.post("/orders/create", {
+        deliveryAddress,
+        totalPrice: parseFloat(totalPrice), // Convert to number
+        orderItems, // Ensure this is sent with proper keys
+      });
+  
+      // Redirect to checkout page on success
+      navigate("/checkout");
+  
+      // Update state for order details
       setOrderDetails({
         shipping: { city, state, country },
         cart,
-        totalPrice,
+        totalPrice: parseFloat(totalPrice),
       });
     } catch (error) {
-      console.error("Error in onSubmit:", error);
+      // Log server or validation errors for debugging
+      if (error.response) {
+        console.error("Server Validation Error:", error.response.data);
+      } else if (error.request) {
+        console.error("No response received from server:", error.request);
+      } else {
+        console.error("Unexpected Error:", error.message);
+      }
     }
   };
-
+  
   return (
     <div className="grid grid-cols-2 gap-4 p-6">
-      {/* Shipping Form */}
       <div className="flex flex-col space-y-4">
         <h2 className="text-2xl font-semibold">Shipping Information</h2>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -50,24 +97,39 @@ const Shipping = () => {
               name="city"
               placeholder="City"
               {...register("city")}
-              className="w-full p-2 border-2 border-gray-300 rounded"
+              className={`w-full p-2 border-2 rounded ${
+                errors.city ? "border-red-500" : "border-gray-300"
+              }`}
             />
+            {errors.city && (
+              <p className="text-red-500 text-sm">City is required (Max: 10 chars).</p>
+            )}
           </div>
           <div>
             <input
               name="state"
               placeholder="State"
               {...register("state")}
-              className="w-full p-2 border-2 border-gray-300 rounded"
+              className={`w-full p-2 border-2 rounded ${
+                errors.state ? "border-red-500" : "border-gray-300"
+              }`}
             />
+            {errors.state && (
+              <p className="text-red-500 text-sm">State is required (Max: 10 chars).</p>
+            )}
           </div>
           <div>
             <input
               name="country"
               placeholder="Country"
               {...register("country")}
-              className="w-full p-2 border-2 border-gray-300 rounded"
+              className={`w-full p-2 border-2 rounded ${
+                errors.country ? "border-red-500" : "border-gray-300"
+              }`}
             />
+            {errors.country && (
+              <p className="text-red-500 text-sm">Country is required (Max: 10 chars).</p>
+            )}
           </div>
           <button
             type="submit"
@@ -78,65 +140,30 @@ const Shipping = () => {
         </form>
       </div>
 
-      {/* Cart Details */}
-      <div className="space-y-4">
-        {cart.map((cartItem) => (
-          <div key={cartItem.cartId} className="flex items-center space-x-4">
-            <div className="flex flex-col">
-              <span>
-                {cartItem.name} - ${cartItem.price} x {cartItem.quantity}
-              </span>
-              <button
-                onClick={() => removeItemFromCart(cartItem.cartId)}
-                className="text-red-600 hover:text-red-800"
-              >
-                Remove from cart
-              </button>
-            </div>
-            <img
-              src={cartItem.image}
-              width={200}
-              height={120}
-              alt={cartItem.name}
-              className="rounded-md shadow-sm"
-            />
+      <div>
+        <h2 className="text-2xl font-semibold">Your Cart - ${totalPrice}</h2>
+        {cart.map((item) => (
+          <div key={item.cartId} className="border-b p-2">
+            {item.name} - ${item.price} x {item.quantity}
+            <br />
+            <img src={item.image} alt={item.name}  />
+            <button
+              onClick={() => removeItemFromCart(item.cartId)}
+              className="text-red-500 underline"
+            >
+              Remove
+            </button>
           </div>
         ))}
-        <div className="font-medium text-lg mt-4">Total Price: ${totalPrice}</div>
       </div>
 
-      {/* Order Summary (Display after submission) */}
       {orderDetails && (
-        <div className="col-span-2 bg-gray-50 p-6 rounded-lg shadow-md mt-6">
-          <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-          <h3 className="font-medium">Shipping Details:</h3>
+        <div className="col-span-2 p-4 bg-gray-100 rounded">
+          <h2 className="text-xl font-bold">Order Summary</h2>
           <p>City: {orderDetails.shipping.city}</p>
           <p>State: {orderDetails.shipping.state}</p>
           <p>Country: {orderDetails.shipping.country}</p>
-
-          <h3 className="font-medium mt-4">Cart Details:</h3>
-          <ul className="space-y-2">
-            {orderDetails.cart.map((item) => (
-              <li
-                key={item.cartId}
-                className="flex items-center justify-between bg-gray-100 p-3 rounded-lg shadow-sm"
-              >
-                <span>
-                  {item.name} - ${item.price} x {item.quantity}
-                </span>
-                <img
-                  src={item.image}
-                  width={50}
-                  height={50}
-                  alt={item.name}
-                  className="rounded-md shadow-sm"
-                />
-              </li>
-            ))}
-          </ul>
-          <p className="text-right font-bold mt-4">
-            Total Price: ${orderDetails.totalPrice}
-          </p>
+          <h3>Total: ${orderDetails.totalPrice}</h3>
         </div>
       )}
     </div>
