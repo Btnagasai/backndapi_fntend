@@ -60,14 +60,18 @@ const Shipping = () => {
       console.log("Total Price:", totalPrice);
   
       // Send request to the server
-      await axiosInstance.post("/orders/create", {
+      const response = await axiosInstance.post("/orders/create", {
         deliveryAddress,
         totalPrice: parseFloat(totalPrice), // Convert to number
         orderItems, // Ensure this is sent with proper keys
       });
   
       // Redirect to checkout page on success
-      navigate("/checkout");
+      navigate("/checkout", {
+        state: {
+          clientSecret: response.data.clientSecret,
+        }
+      });
   
       // Update state for order details
       setOrderDetails({
